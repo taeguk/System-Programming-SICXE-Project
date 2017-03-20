@@ -2,17 +2,16 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define COMMAND_INPUT_MAX_LEN 100
 #define COMMAND_TOKEN_MAX_NUM 8
 
-enum command_type
+static enum command_type
   {
     COMMAND_HELP, COMMAND_DIR, COMMAND_QUIT, COMMAND_HISTORY,
     COMMAND_DUMP, COMMAND_EDIT, COMMAND_FILL, COMMAND_RESET,
     COMMAND_RESET, COMMAND_OPCODE, COMMAND_OPCODELIST
   };
 
-struct command
+static struct command
   {
     enum command_type type;
     size_t token_cnt;
@@ -109,6 +108,8 @@ static bool command_fetch (struct command *command)
 
 static bool command_process (struct command *command, bool *quit)
 {
+  *quit = false;
+
   switch (command->type)
     {
     case COMMAND_HELP:
