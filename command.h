@@ -2,9 +2,19 @@
 #define __COMMAND_H__
 
 #include <stdbool.h>
+#include "history.h"
+#include "memory.h"
+#include "opcode.h"
+#include "command_def.h"
 
-#define COMMAND_INPUT_MAX_LEN 100
+struct command_state
+  {
+    struct history_manager *history_manager;
+    struct memory_manager *memory_manager;
+    struct opcode_manager *opcode_manager;
+    uint32_t saved_dump_start;
+  };
 
-bool command_loop ();
+bool command_loop (struct command_state *state);
 
 #endif
