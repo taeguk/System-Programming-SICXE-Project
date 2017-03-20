@@ -6,8 +6,6 @@
 
 #define OPCODE_NAME_MAX_LEN 8
 
-#define OPCODE_HASH_TABLE_SIZE 20
-
 enum opcode_format
   {
     FORMAT_1, FORMAT_2, FORMAT_3_4
@@ -20,12 +18,9 @@ struct opcode
     enum opcode_format op_format;
   };
 
-struct opcode_manager
-  {
-    struct list buckets[OPCODE_HASH_TABLE_SIZE];
-  };
+struct opcode_manager;
 
-void opcode_manager_init (struct opcode_manager *manager);
+struct opcode_manager *opcode_manager_construct ();
 void opcode_manager_destroy (struct opcode_manager *manager);
 
 void opcode_insert (struct opcode_manager *manager, const struct opcode *opcode);

@@ -3,6 +3,13 @@
 #include <string.h>
 #include <stdio.h>
 
+#define OPCODE_HASH_TABLE_SIZE 20
+
+struct opcode_manager
+  {
+    struct list buckets[OPCODE_HASH_TABLE_SIZE];
+  };
+
 static struct opcode_node
   {
     struct opcode opcode;
@@ -11,10 +18,14 @@ static struct opcode_node
 
 static size_t hash_string (const char *str, size_t bucket_cnt);
 
-void opcode_manager_init (struct opcode_manager *manager)
+struct opcode_manager *opcode_manager_construct ()
 {
+  struct opcode_manager *manager = malloc (sizeof(*manager));
+
   for (int i = 0; i < OPCODE_HASH_TABLE_SIZE; ++i)
     list_init (manager->buckets + i);
+
+  return manager;
 }
 
 void opcode_manager_destroy (struct opcode_manager *manager)
@@ -27,6 +38,7 @@ void opcode_manager_destroy (struct opcode_manager *manager)
           free (list_entry (node, struct opcode_node, list_node));
         }
     }
+  free (manager);
 }
 
 void opcode_insert (struct opcode_manager *manager, const struct opcode *opcode)

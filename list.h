@@ -5,23 +5,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-struct list_node
-  {
-    struct list_node *prev;
-    struct list_node *next;
-  };
-
-struct list
-  {
-    struct list_node head;
-    struct list_node tail;
-  };
+struct list_node;
+struct list;
 
 #define list_entry (LIST_NODE, ENTRY_STRUCT, NODE_MEMBER) \
   ((ENTRY_STRUCT *) ((int8_t *) &((LIST_NODE)->prev) - offsetof(ENTRY_STRUCT, NODE_MEMBER.prev))
 
-/* List Initialize and Destroy */
-void list_init (struct list *list);
+/* List Construct and Destroy */
+struct list *list_construct ();
+void list_destroy (struct list *list);
 
 /* List Traverse */
 struct list_node *list_begin (struct list *list);
