@@ -1,22 +1,22 @@
 #include "history.h"
-#include "command.h"
+#include "command_def.h"
+#include "list.h"
 #include <string.h>
-
-typedef int32_t history_no_t;
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 struct history_manager
   {
-    history_no_t history_cnt;
-    struct list history_list;
+    struct list *history_list;
   };
 
-static struct history
+struct history
   {
-    history_no_t no;
     char command_str[COMMAND_INPUT_MAX_LEN+1];
   };
 
-static struct history_node
+struct history_node
   {
     struct history history;
     struct list_node list_node;
@@ -26,8 +26,7 @@ struct history_manager *history_manager_construct ()
 {
   struct history_manager *manager = malloc (sizeof(*manager));
 
-  list_init (&manager->history_list);
-  manager->history_cnt = 0;
+  manager->history_list = list_construct ();
 
   return manager;
 }
@@ -35,9 +34,9 @@ struct history_manager *history_manager_construct ()
 void history_manager_destroy (struct history_manager *manager)
 {
   struct list_node *node;
-  while (node = list_pop_front (manager->history_list))
+  while ((node = list_pop_front (manager->history_list)))
     {
-      free (list_entry (node, struct opcode_node, list_node));
+      free (list_entry (node, struct history_node, list_node));
     }
   free (manager);
 }
@@ -46,15 +45,22 @@ void history_insert (struct history_manager *manager, const char *command_str)
 {
   struct history_node *node = malloc (sizeof(*node));
 
-  node->history.no = manager->history_cnt++;
   strncpy (node->history.command_str, command_str, COMMAND_INPUT_MAX_LEN);
 
-  list_push_back (&manager->history_list, (struct list_node *) node);
+  list_push_back (manager->history_list, &node->list_node);
 }
 
-void history_print (struct history_manager *manager)
+void history_print (struct history_manager *manager, const char *cur_command_str)
 {
   struct list_node *node;
-  /***************** will be implemented ******/
-}
+  int no = 0;
 
+  for (node = list_begin (manager->history_list);
+       node != list_end (manager->history_list);
+       node = list_next (node))
+    {
+      struct history_node *history_node = list_entry (node, struct history_node, list_node);
+      printf ("%-4d %s", ++no, history_node->history.command_str);
+    }
+  printf ("%-4d %s", ++no, cur_command_str);
+}
