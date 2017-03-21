@@ -11,6 +11,7 @@
 
 #define COMMAND_TOKEN_MAX_NUM 8
 
+/* 사용자가 입력한 명령에 대한 parsing / processing 결과에 대한 코드 */
 #define COMMAND_STATUS_SUCCESS 0
 #define COMMAND_STATUS_INVALID_INPUT 1
 #define COMMAND_STATUS_TOO_MANY_TOKENS 2
@@ -23,12 +24,13 @@ enum command_type
     COMMAND_OPCODE, COMMAND_OPCODELIST
   };
 
+/* 사용자가 입력한 명령을 의미하는 구조체 */
 struct command
   {
     enum command_type type;
     size_t token_cnt;
-    char *token_list[COMMAND_TOKEN_MAX_NUM+1];
-    char *input;
+    char *token_list[COMMAND_TOKEN_MAX_NUM+1];  // 사용자가 입력한 명령어가 token별로 쪼개서 여기에 들어간다.
+    char *input;  // 사용자 입력한 명령어 라인 전부가 이 곳에 들어간다.
   };
 
 static int command_fetch (struct command *command);
@@ -98,6 +100,9 @@ bool command_loop (struct command_state *state)
   return true;
 }
 
+/* Command를 fetch하는 함수. 
+ * 사용자로 부터 명령어를 입력받고, 그 것을 바탕으로 command 구조체를 구축한다.
+ */
 static int command_fetch (struct command *command)
 {
   static char input[COMMAND_INPUT_MAX_LEN];
@@ -157,6 +162,9 @@ static int command_fetch (struct command *command)
   return COMMAND_STATUS_SUCCESS;
 }
 
+/* Command를 처리하는 함수.
+ * command type에 따라 서로 다른 handler를 호출해 준다.
+ */
 static int command_process (struct command_state *state, struct command *command, bool *quit)
 {
   *quit = false;
@@ -199,6 +207,7 @@ static int command_process (struct command_state *state, struct command *command
     }
 }
 
+/* help 명령어에 대한 handler. */
 static int command_h_help (__attribute__((unused)) struct command_state *state, __attribute__((unused)) struct command *command)
 {
   if (command->token_cnt != 1)
@@ -218,6 +227,7 @@ static int command_h_help (__attribute__((unused)) struct command_state *state, 
   return COMMAND_STATUS_SUCCESS;
 }
 
+/* dir 명령어에 대한 handler */
 static int command_h_dir (__attribute__((unused)) struct command_state *state, __attribute__((unused)) struct command *command)
 {
   if (command->token_cnt != 1)
@@ -260,6 +270,7 @@ static int command_h_dir (__attribute__((unused)) struct command_state *state, _
   return COMMAND_STATUS_SUCCESS;
 }
 
+/* history 명령어에 대한 handler */
 static int command_h_history (struct command_state *state, __attribute__((unused)) struct command *command)
 {
   if (command->token_cnt != 1)
@@ -269,28 +280,33 @@ static int command_h_history (struct command_state *state, __attribute__((unused
   return COMMAND_STATUS_SUCCESS;
 }
 
+/* dump 명령어에 대한 handler */
 static int command_h_dump (struct command_state *state, struct command *command)
 {
   uint32_t start, end;
   bool enable_max_end;
   uint32_t memory_size = memory_get_memory_size (state->memory_manager);
 
+  // 명령어의 형태가 매개변수없는 dump 일 때,
   if (command->token_cnt == 1)
     {
       start = state->saved_dump_start;
       end = start + 159;
+      // memory size를 넘어가는 경우, 다음 dump때 출력할 위치를 0으로 초기화한다.
       if (end > memory_size)
         state->saved_dump_start = 0;
       else
         state->saved_dump_start += 160;
       enable_max_end = true;
     }
+  // 명령어의 형태가 dump start 일 때,
   else if (command->token_cnt == 2)
     {
       start = strtol (command->token_list[1], NULL, 16);
       end = start + 159;
       enable_max_end = true;
     }
+  // 명령어의 형태가 dump start, end 일 때,
   else if (command->token_cnt == 3)
     {
       start = strtol (command->token_list[1], NULL, 16);
@@ -308,6 +324,7 @@ static int command_h_dump (struct command_state *state, struct command *command)
   return COMMAND_STATUS_SUCCESS;
 }
 
+/* edit 명령어에 대한 handler */
 static int command_h_edit (struct command_state *state, struct command *command)
 {
   if (command->token_cnt != 3)
@@ -329,6 +346,7 @@ static int command_h_edit (struct command_state *state, struct command *command)
   return COMMAND_STATUS_SUCCESS;
 }
 
+/* fill 명령어에 대한 handler */
 static int command_h_fill (struct command_state *state, struct command *command)
 {
   if (command->token_cnt != 4)
@@ -351,6 +369,7 @@ static int command_h_fill (struct command_state *state, struct command *command)
   return COMMAND_STATUS_SUCCESS;
 }
 
+/* reset 명령어에 대한 handler */
 static int command_h_reset (struct command_state *state, __attribute__((unused)) struct command *command)
 {
   if (command->token_cnt != 1)
@@ -360,6 +379,7 @@ static int command_h_reset (struct command_state *state, __attribute__((unused))
   return COMMAND_STATUS_SUCCESS;
 }
 
+/* opcode 명령어에 대한 handler */
 static int command_h_opcode (struct command_state *state, struct command *command)
 {
   if (command->token_cnt != 2)
@@ -379,6 +399,7 @@ static int command_h_opcode (struct command_state *state, struct command *comman
     }
 }
 
+/* opcodelist 명령어에 대한 handler */
 static int command_h_opcodelist (struct command_state *state, __attribute__((unused)) struct command *command)
 {
   if (command->token_cnt != 1)
