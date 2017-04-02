@@ -1,4 +1,5 @@
 #include "command.h"
+#include "assemble.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -21,7 +22,8 @@ enum command_type
   {
     COMMAND_HELP, COMMAND_DIR, COMMAND_QUIT, COMMAND_HISTORY,
     COMMAND_DUMP, COMMAND_EDIT, COMMAND_FILL, COMMAND_RESET,
-    COMMAND_OPCODE, COMMAND_OPCODELIST
+    COMMAND_OPCODE, COMMAND_OPCODELIST,
+    COMMAND_ASSEMBLE
   };
 
 /* 사용자가 입력한 명령을 의미하는 구조체 */
@@ -45,6 +47,7 @@ static int command_h_fill (struct command_state *state, struct command *command)
 static int command_h_reset (struct command_state *state, struct command *command);
 static int command_h_opcode (struct command_state *state, struct command *command);
 static int command_h_opcodelist (struct command_state *state, struct command *command);
+static int command_h_assemble (struct command_state *state, struct command *command);
 
 bool command_loop (struct command_state *state)
 {
@@ -156,6 +159,9 @@ static int command_fetch (struct command *command)
   else if (COMPARE_WITH ("opcodelist"))
     command->type = COMMAND_OPCODELIST
       ;
+  else if (COMPARE_WITH ("assemble"))
+    command->type = COMMAND_ASSEMBLE
+      ;
   else
     return COMMAND_STATUS_INVALID_INPUT;
 
@@ -202,6 +208,9 @@ static int command_process (struct command_state *state, struct command *command
     case COMMAND_OPCODELIST:
       return command_h_opcodelist (state, command);
         ;
+    case COMMAND_ASSEMBLE:
+      return command_h_assemble (state, command);
+        ;
     default:
       return COMMAND_STATUS_INVALID_INPUT;
     }
@@ -223,6 +232,7 @@ static int command_h_help (__attribute__((unused)) struct command_state *state, 
           "reset\n"
           "opcode mnemonic\n"
           "opcodelist\n"
+          "assemble filename\n"
   );
   return COMMAND_STATUS_SUCCESS;
 }
@@ -409,3 +419,13 @@ static int command_h_opcodelist (struct command_state *state, __attribute__((unu
   return COMMAND_STATUS_SUCCESS;
 }
 
+static int command_h_assemble (struct command_state *state, struct command *command)
+{
+  if (command->token_cnt != 2)
+    return COMMAND_STATUS_INVALID_INPUT;
+
+  int ret = assemble (command->token_list[1], state->opcode_manager, NULL);
+  printf("heelo %d\n", ret);
+
+  return COMMAND_STATUS_SUCCESS;
+}

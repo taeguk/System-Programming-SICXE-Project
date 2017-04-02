@@ -58,7 +58,7 @@ void opcode_insert (struct opcode_manager *manager, const struct opcode *opcode)
 }
 
 /* opcode manager에서 이름 (mnemonic) 을 통해 opcode를 찾는 함수 */
-const struct opcode *opcode_find (struct opcode_manager *manager, const char *name)
+const struct opcode *opcode_find (const struct opcode_manager *manager, const char *name)
 {
   size_t hash = hash_string (name, OPCODE_HASH_TABLE_SIZE);
   struct list_node *node;
@@ -76,7 +76,7 @@ const struct opcode *opcode_find (struct opcode_manager *manager, const char *na
 }
 
 /* opcode manager 내의 opcode들을 모두 출력하는 함수 */
-void opcode_print_list (struct opcode_manager *manager)
+void opcode_print_list (const struct opcode_manager *manager)
 {
   for (int i = 0; i < OPCODE_HASH_TABLE_SIZE; ++i)
     {
@@ -89,6 +89,12 @@ void opcode_print_list (struct opcode_manager *manager)
            node = next_node)
         {
           struct opcode_node *opcode_node = list_entry (node, struct opcode_node, list_node);
+          enum opcode_format op_format = opcode_node->opcode.op_format;
+
+          if (op_format != OPCODE_FORMAT_1 && op_format != OPCODE_FORMAT_2 &&
+              op_format != OPCODE_FORMAT_3_4)
+            continue; /* skip fake opcodes */
+
           printf ("[%s,%02X]", opcode_node->opcode.name, opcode_node->opcode.val);
           next_node = list_next (node);
           if (next_node == list_end (manager->buckets[i]))
