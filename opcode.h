@@ -8,6 +8,13 @@
 /* opcode의 포멧을 의미하는 enum */
 enum opcode_format
   {
+    /* FAKE OPCODES */
+    OPCODE_START, OPCODE_END,
+    OPCODE_BYTE, OPCODE_WORD,
+    OPCODE_RESB, OPCODE_RESW,
+    OPCODE_BASE,
+
+    /* REAL OPCODES */
     OPCODE_FORMAT_1, OPCODE_FORMAT_2, OPCODE_FORMAT_3_4
   };
 
@@ -30,9 +37,10 @@ void opcode_manager_destroy (struct opcode_manager *manager);
 void opcode_insert (struct opcode_manager *manager, const struct opcode *opcode);
 
 /* opcode manager에서 이름 (mnemonic) 을 통해 opcode를 찾는 함수 */
-const struct opcode *opcode_find (struct opcode_manager *manager, const char *name);  // Be cautious to dangling pointer problem.
+const struct opcode *opcode_find (const struct opcode_manager *manager, const char *name);  // Be cautious to dangling pointer problem.
 
 /* opcode manager 내의 opcode들을 모두 출력하는 함수 */
-void opcode_print_list (struct opcode_manager *manager);
+void opcode_print_list (const struct opcode_manager *manager);
+///************** 수정해야함!!!!! ********///
 
 #endif
