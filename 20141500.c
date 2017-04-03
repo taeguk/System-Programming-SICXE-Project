@@ -15,7 +15,8 @@ static void insert_fake_opcodes (struct opcode_manager *manager)
         { 0, "WORD", OPCODE_WORD },
         { 0, "RESB", OPCODE_RESB },
         { 0, "RESW", OPCODE_RESW },
-        { 0, "BASE", OPCODE_BASE }
+        { 0, "BASE", OPCODE_BASE },
+        { 0, "NOBASE", OPCODE_NOBASE }
     };
 
   for (int i = 0; i < sizeof(fake_list) / sizeof(*fake_list); ++i)
@@ -43,24 +44,53 @@ static struct opcode_manager *read_opcode_file ()
   while (fscanf (fp, "%X %6s %5s", /* TODO */ 
                  &val, opcode.name, format_buf) != EOF)
     {
+#define COMPARE_WITH(STR) \
+  (strcmp (opcode.name, (STR)) == 0)
+
       if (strcmp (format_buf, "1") == 0)
-        opcode.op_format = OPCODE_FORMAT_1;
+        {
+          opcode.op_format = OPCODE_FORMAT_1;
+          opcode.detail_format = OPCODE_FORMAT_1_GENERAL;
+        }
       else if (strcmp (format_buf, "2") == 0)
-        opcode.op_format = OPCODE_FORMAT_2;
+        {
+          opcode.op_format = OPCODE_FORMAT_2;
+
+          if (COMPARE_WITH ("CLEAR") || COMPARE_WITH ("TIXR"))
+            opcode.detail_format = OPCODE_FORMAT_2_ONE_REGISTER;
+          else if (COMPARE_WITH ("SHIFTL") || COMPARE_WITH ("SHIFTR"))
+            opcode.detail_format = OPCODE_FORMAT_2_REGISTER_N;
+          else if (COMPARE_WITH ("SVC"))
+            opcode.detail_format = OPCODE_FORMAT_2_ONE_N;
+          else
+            opcode.detail_format = OPCODE_FORMAT_2_GENERAL;
+        }
       else if (strcmp (format_buf, "3/4") == 0)
-        opcode.op_format = OPCODE_FORMAT_3_4;
+        {
+          opcode.op_format = OPCODE_FORMAT_3_4;
+
+          if (COMPARE_WITH ("RSUB"))
+            opcode.detail_format = OPCODE_FORMAT_3_4_NO_OPERAND;
+          else
+            opcode.detail_format = OPCODE_FORMAT_3_4_GENERAL;
+        }
       else
         goto ERROR;
 
       opcode.val = val;
       opcode_insert (manager, &opcode);
+
+#undef COMPARE_WITH
     }
 
   goto END;
 
 ERROR:
   if (manager)
-    opcode_manager_destroy (manager);
+    {
+      opcode_manager_destroy (manager);
+      manager = NULL;
+    }
 
 END:
   if (fp)
@@ -83,9 +113,10 @@ int main()
       return 1;
     }
   insert_fake_opcodes (state.opcode_manager);
+  state.symbol_manager = NULL;
   state.saved_dump_start = 0;
 
-  /* Command Loop로 진입하여, 사용자의 입력을 처리한다.  */
+  /* Command Loop로 진입하여, 사용자의 입력을 처리한다. */
   command_loop(&state);
 
   return 0;

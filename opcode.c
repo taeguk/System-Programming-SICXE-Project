@@ -36,9 +36,9 @@ void opcode_manager_destroy (struct opcode_manager *manager)
 {
   for (int i = 0; i < OPCODE_HASH_TABLE_SIZE; ++i)
     {
-      struct list_node *node;
-      while ((node = list_pop_front (manager->buckets[i])))
+      while (!list_empty (manager->buckets[i]))
         {
+          struct list_node *node = list_pop_front (manager->buckets[i]);
           free (list_entry (node, struct opcode_node, list_node));
         }
       list_destroy (manager->buckets[i]);
@@ -81,12 +81,13 @@ void opcode_print_list (const struct opcode_manager *manager)
   for (int i = 0; i < OPCODE_HASH_TABLE_SIZE; ++i)
     {
       struct list_node *node, *next_node;
+      bool first = true;
 
       printf ("%d : ", i);
       
       for (node = list_begin (manager->buckets[i]);
-           ;
-           node = next_node)
+           node != list_end (manager->buckets[i]);
+           node = list_next (node))
         {
           struct opcode_node *opcode_node = list_entry (node, struct opcode_node, list_node);
           enum opcode_format op_format = opcode_node->opcode.op_format;
@@ -95,12 +96,12 @@ void opcode_print_list (const struct opcode_manager *manager)
               op_format != OPCODE_FORMAT_3_4)
             continue; /* skip fake opcodes */
 
-          printf ("[%s,%02X]", opcode_node->opcode.name, opcode_node->opcode.val);
-          next_node = list_next (node);
-          if (next_node == list_end (manager->buckets[i]))
-            break;
+          if (first)
+            first = false;
           else
             printf (" -> ");
+
+          printf ("[%s,%02X]", opcode_node->opcode.name, opcode_node->opcode.val);
         }
       printf ("\n");
     }
