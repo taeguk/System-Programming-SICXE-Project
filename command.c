@@ -23,7 +23,7 @@ enum command_type
     COMMAND_HELP, COMMAND_DIR, COMMAND_QUIT, COMMAND_HISTORY,
     COMMAND_DUMP, COMMAND_EDIT, COMMAND_FILL, COMMAND_RESET,
     COMMAND_OPCODE, COMMAND_OPCODELIST,
-    COMMAND_ASSEMBLE
+    COMMAND_ASSEMBLE, COMMAND_TYPE, COMMAND_SYMBOL
   };
 
 /* 사용자가 입력한 명령을 의미하는 구조체 */
@@ -48,6 +48,8 @@ static int command_h_reset (struct command_state *state, struct command *command
 static int command_h_opcode (struct command_state *state, struct command *command);
 static int command_h_opcodelist (struct command_state *state, struct command *command);
 static int command_h_assemble (struct command_state *state, struct command *command);
+static int command_h_type (struct command_state *state, struct command *command);
+static int command_h_symbol (struct command_state *state, struct command *command);
 
 bool command_loop (struct command_state *state)
 {
@@ -162,8 +164,16 @@ static int command_fetch (struct command *command)
   else if (COMPARE_WITH ("assemble"))
     command->type = COMMAND_ASSEMBLE
       ;
+  else if (COMPARE_WITH ("type"))
+    command->type = COMMAND_TYPE
+      ;
+  else if (COMPARE_WITH ("symbol"))
+    command->type = COMMAND_SYMBOL
+      ;
   else
     return COMMAND_STATUS_INVALID_INPUT;
+
+#undef COMPARE_WITH
 
   return COMMAND_STATUS_SUCCESS;
 }
@@ -211,6 +221,12 @@ static int command_process (struct command_state *state, struct command *command
     case COMMAND_ASSEMBLE:
       return command_h_assemble (state, command);
         ;
+    case COMMAND_TYPE:
+      return command_h_type (state, command);
+        ;
+    case COMMAND_SYMBOL:
+      return command_h_symbol (state, command);
+        ;
     default:
       return COMMAND_STATUS_INVALID_INPUT;
     }
@@ -233,6 +249,8 @@ static int command_h_help (__attribute__((unused)) struct command_state *state, 
           "opcode mnemonic\n"
           "opcodelist\n"
           "assemble filename\n"
+          "type filename\n"
+          "symbol\n"
   );
   return COMMAND_STATUS_SUCCESS;
 }
@@ -281,7 +299,7 @@ static int command_h_dir (__attribute__((unused)) struct command_state *state, _
 }
 
 /* history 명령어에 대한 handler */
-static int command_h_history (struct command_state *state, __attribute__((unused)) struct command *command)
+static int command_h_history (struct command_state *state, struct command *command)
 {
   if (command->token_cnt != 1)
     return COMMAND_STATUS_INVALID_INPUT;
@@ -380,7 +398,7 @@ static int command_h_fill (struct command_state *state, struct command *command)
 }
 
 /* reset 명령어에 대한 handler */
-static int command_h_reset (struct command_state *state, __attribute__((unused)) struct command *command)
+static int command_h_reset (struct command_state *state, struct command *command)
 {
   if (command->token_cnt != 1)
     return COMMAND_STATUS_INVALID_INPUT;
@@ -410,7 +428,7 @@ static int command_h_opcode (struct command_state *state, struct command *comman
 }
 
 /* opcodelist 명령어에 대한 handler */
-static int command_h_opcodelist (struct command_state *state, __attribute__((unused)) struct command *command)
+static int command_h_opcodelist (struct command_state *state, struct command *command)
 {
   if (command->token_cnt != 1)
     return COMMAND_STATUS_INVALID_INPUT;
@@ -424,8 +442,59 @@ static int command_h_assemble (struct command_state *state, struct command *comm
   if (command->token_cnt != 2)
     return COMMAND_STATUS_INVALID_INPUT;
 
-  int ret = assemble (command->token_list[1], state->opcode_manager, NULL);
-  printf("heelo %d\n", ret);
+  struct symbol_manager *symbol_manager = symbol_manager_construct ();
+  int error_code = assemble (command->token_list[1], state->opcode_manager, symbol_manager, NULL);
+  if (error_code != 0)
+    {
+      fprintf (stderr, "[ERROR] Assemble Fail.\n");
+      symbol_manager_destroy (symbol_manager);
+      return COMMAND_STATUS_FAIL_TO_PROCESS;
+    }
+
+  if (state->symbol_manager)
+    symbol_manager_destroy (state->symbol_manager);
+
+  state->symbol_manager = symbol_manager;
+
+  return COMMAND_STATUS_SUCCESS;
+}
+
+static int command_h_type (__attribute__((unused)) struct command_state *state, struct command *command)
+{
+  if (command->token_cnt != 2)
+    return COMMAND_STATUS_INVALID_INPUT;
+
+  FILE *fp = fopen (command->token_list[1], "rt");
+
+  if (!fp)
+    {
+      fprintf (stderr, "[ERROR] Invalid file name: %s\n", command->token_list[1]);
+      return COMMAND_STATUS_INVALID_INPUT;
+    }
+
+  char buf[512];
+
+  // TODO: 마지막 개행 처리??
+  while (fgets (buf, sizeof(buf), fp))
+    fputs (buf, stdout);
+
+  fclose (fp);
+
+  return COMMAND_STATUS_SUCCESS;
+}
+
+static int command_h_symbol (struct command_state *state, struct command *command)
+{
+  if (command->token_cnt != 1)
+    return COMMAND_STATUS_INVALID_INPUT;
+
+  if (!state->symbol_manager)
+    {
+      fprintf (stderr, "[ERROR] There is no symbol table.\n");
+      return COMMAND_STATUS_FAIL_TO_PROCESS;
+    }
+  
+  symbol_print_list (state->symbol_manager);
 
   return COMMAND_STATUS_SUCCESS;
 }

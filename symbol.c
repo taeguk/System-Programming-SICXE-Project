@@ -36,9 +36,9 @@ void symbol_manager_destroy (struct symbol_manager *manager)
 {
   for (int i = 0; i < SYMBOL_HASH_TABLE_SIZE; ++i)
     {
-      struct list_node *node;
-      while ((node = list_pop_front (manager->buckets[i])))
+      while (!list_empty (manager->buckets[i]))
         {
+          struct list_node *node = list_pop_front (manager->buckets[i]);
           free (list_entry (node, struct symbol_node, list_node));
         }
       list_destroy (manager->buckets[i]);
@@ -75,28 +75,38 @@ const struct symbol *symbol_find (struct symbol_manager *manager, const char *la
   return NULL;
 }
 
+static int symbol_compare_func (const void *A, const void *B)
+{
+  struct symbol_node *nodeA = *(struct symbol_node **) A;
+  struct symbol_node *nodeB = *(struct symbol_node **) B;
+  return strcmp (nodeA->symbol.label, nodeB->symbol.label);
+}
+
 /* symbol manager 내의 symbol들을 모두 출력하는 함수 */
 void symbol_print_list (struct symbol_manager *manager)
 {
+  struct symbol_node *all_node_list[1111]={0};
+  int cnt = 0;
+
   for (int i = 0; i < SYMBOL_HASH_TABLE_SIZE; ++i)
     {
-      struct list_node *node, *next_node;
-
-      printf ("%d : ", i);
+      struct list_node *node;
       
       for (node = list_begin (manager->buckets[i]);
-           ;
-           node = next_node)
+           node != list_end (manager->buckets[i]);
+           node = list_next (node))
         {
           struct symbol_node *symbol_node = list_entry (node, struct symbol_node, list_node);
-          printf ("[%s,%02X]", symbol_node->symbol.label, symbol_node->symbol.LOCCTR);
-          next_node = list_next (node);
-          if (next_node == list_end (manager->buckets[i]))
-            break;
-          else
-            printf (" -> ");
+          all_node_list[cnt++] = symbol_node;
         }
-      printf ("\n");
+    }
+
+  qsort (all_node_list, cnt, sizeof(struct symbol_node*), symbol_compare_func);
+
+  for (int i = 0; i < cnt; ++i)
+    {
+      struct symbol_node *symbol_node = all_node_list[i];
+      printf ("\t%s\t%04X\n", symbol_node->symbol.label, symbol_node->symbol.LOCCTR);
     }
 }
 

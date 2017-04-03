@@ -2,6 +2,7 @@
 #define __ASSEMBLE_H__
 
 #include "opcode.h"
+#include "symbol.h"
 
 struct assemble_result
   {
@@ -10,6 +11,7 @@ struct assemble_result
   };
 
 int assemble (const char *filename, const struct opcode_manager *opcode_manager,
+              struct symbol_manager *symbol_manager,
               struct assemble_result *result);
 
 #endif

@@ -5,6 +5,7 @@
 #include "history.h"
 #include "memory.h"
 #include "opcode.h"
+#include "symbol.h"
 #include "command_def.h"
 
 /* Command Loop의 state를 의미하는 구조체 
@@ -17,6 +18,7 @@ struct command_state
     struct history_manager *history_manager;
     struct memory_manager *memory_manager;
     struct opcode_manager *opcode_manager;
+    struct symbol_manager *symbol_manager;
     uint32_t saved_dump_start; /* parameter가 없는 dump 명령어에서 위치를 저장하기 위해 쓰인다. */
   };
 
