@@ -1,6 +1,3 @@
-#include "command.h"
-#include "assemble.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -9,6 +6,9 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <assert.h>
+
+#include "command.h"
+#include "assemble.h"
 
 #define COMMAND_TOKEN_MAX_NUM 8
 
@@ -114,7 +114,7 @@ static int command_fetch (struct command *command)
   static char input_token[COMMAND_INPUT_MAX_LEN];
 
   fgets (input, COMMAND_INPUT_MAX_LEN, stdin);
-  strcpy (input_token, input);
+  strncpy (input_token, input, COMMAND_INPUT_MAX_LEN);
 
   command->input = input;
   command->token_cnt = 0;
@@ -129,7 +129,7 @@ static int command_fetch (struct command *command)
     return COMMAND_STATUS_TOO_MANY_TOKENS;
 
 #define COMPARE_WITH(STR) \
-  (strncmp (command->token_list[0], (STR), COMMAND_INPUT_MAX_LEN) == 0)
+  (strcmp (command->token_list[0], (STR)) == 0)
 
   if (COMPARE_WITH ("h") || COMPARE_WITH ("help"))
     command->type = COMMAND_HELP
@@ -443,7 +443,7 @@ static int command_h_assemble (struct command_state *state, struct command *comm
     return COMMAND_STATUS_INVALID_INPUT;
 
   struct symbol_manager *symbol_manager = symbol_manager_construct ();
-  int error_code = assemble (command->token_list[1], state->opcode_manager, symbol_manager, NULL);
+  int error_code = assemble (command->token_list[1], state->opcode_manager, symbol_manager);
   if (error_code != 0)
     {
       fprintf (stderr, "[ERROR] Assemble Fail.\n");

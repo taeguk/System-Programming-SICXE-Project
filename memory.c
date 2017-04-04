@@ -1,7 +1,8 @@
-#include "memory.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#include "memory.h"
 
 struct memory_manager
   {

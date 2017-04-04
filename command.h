@@ -2,6 +2,7 @@
 #define __COMMAND_H__
 
 #include <stdbool.h>
+
 #include "history.h"
 #include "memory.h"
 #include "opcode.h"

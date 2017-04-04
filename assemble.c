@@ -1,5 +1,3 @@
-#include "assemble.h"
-
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -8,11 +6,23 @@
 #include <assert.h>
 #include <unistd.h>
 
+#include "assemble.h"
+
 #define ASSEMBLE_STATEMENT_TOKEN_MAX_NUM 8
 #define ASSEMBLE_STATEMENT_MAX_LEN 100 
 
 #define SYMBOL_PART_MAX_LEN 7
 #define MNEMONIC_PART_MAX_LEN 7
+
+#define TEXT_RECORD_MAX_BYTES_PER_ROW 30
+
+#define MAX_ASM_FILENAME_LEN 280
+
+#define MAX_MOD_REC_NUM 1000
+#define MAX_PROGRAM_NAME_LEN 10
+#define MAX_REC_HEAD_LEN 30
+#define MAX_OBJ_BUF_LEN 1000
+#define MAX_BYTE_BUF_LEN 1000
 
 struct statement
   {
@@ -26,26 +36,79 @@ struct statement
     char *input;
   };
 
+union instruction_format_1
+  {
+    struct
+      {
+        uint8_t opcode : 8;
+      } bit_field;
+    uint8_t val;
+  };
+
+union instruction_format_2
+  {
+    struct
+      {
+        uint16_t r2     : 4;
+        uint16_t r1     : 4;
+        uint16_t opcode : 8;
+      } bit_field;
+    uint16_t val;
+  };
+
+union instruction_format_3
+  {
+    struct
+      {
+        uint32_t disp   : 12;
+        uint32_t e      : 1;  // must be 0
+        uint32_t p      : 1;
+        uint32_t b      : 1;
+        uint32_t x      : 1;
+        uint32_t i      : 1;
+        uint32_t n      : 1;
+        uint32_t opcode : 6;
+      } bit_field;
+    uint32_t val;
+  };
+
+union instruction_format_4
+  {
+    struct
+      {
+        uint32_t address: 20;
+        uint32_t e      : 1;  // must be 1
+        uint32_t p      : 1;
+        uint32_t b      : 1;
+        uint32_t x      : 1;
+        uint32_t i      : 1;
+        uint32_t n      : 1;
+        uint32_t opcode : 6;
+      } bit_field;
+    uint32_t val;
+  };
+
 static int assemble_pass_1 (const char *asm_file, const char *mid_file, 
                             const struct opcode_manager *opcode_manager,
-                            struct symbol_manager *symbol_manager,
-                            struct assemble_result *result);
+                            struct symbol_manager *symbol_manager);
+
 static int assemble_pass_2 (const char *mid_file, const char *lst_file, const char *obj_file,
                             const struct opcode_manager *opcode_manager,
-                            const struct symbol_manager *symbol_manager,
-                            struct assemble_result *result);
+                            const struct symbol_manager *symbol_manager);
 
 /* 성공 시 0, 그렇지 않을 경우 그외의 값을 반환. */
 int assemble (const char *filename, const struct opcode_manager *opcode_manager,
-              struct symbol_manager *symbol_manager,
-              struct assemble_result *result)
+              struct symbol_manager *symbol_manager)
 {
   /*
    * 1. filename의 확장자가 .asm 인지 체크
    * 2. listing file과 outputfile 열기.
    */
-  char name[111], mid_file[111], lst_file[111], obj_file[111];
-  strcpy (name, filename);
+  char name[MAX_ASM_FILENAME_LEN+1], mid_file[MAX_ASM_FILENAME_LEN+1], 
+       lst_file[MAX_ASM_FILENAME_LEN+1], obj_file[MAX_ASM_FILENAME_LEN+1];
+  
+  strncpy (name, filename, MAX_ASM_FILENAME_LEN);
+  
   char *dot = strrchr (name, '.');
   if (dot == NULL)
     {
@@ -54,18 +117,18 @@ int assemble (const char *filename, const struct opcode_manager *opcode_manager,
     }
 
   *dot = '\0';
-  sprintf (mid_file, "%s.mid", name);
-  sprintf (lst_file, "%s.lst", name);
-  sprintf (obj_file, "%s.obj", name);
+  snprintf (mid_file, MAX_ASM_FILENAME_LEN, "%s.mid", name);
+  snprintf (lst_file, MAX_ASM_FILENAME_LEN, "%s.lst", name);
+  snprintf (obj_file, MAX_ASM_FILENAME_LEN, "%s.obj", name);
   
   fprintf (stdout, "[Progress] Now, start pass 1.\n");
-  if (assemble_pass_1 (filename, mid_file, opcode_manager, symbol_manager, NULL) != 0)
+  if (assemble_pass_1 (filename, mid_file, opcode_manager, symbol_manager) != 0)
     {
       unlink (mid_file);
       return -1;
     }
   fprintf (stdout, "[Progress] Now, start pass 2.\n");
-  if (assemble_pass_2 (mid_file, lst_file, obj_file, opcode_manager, symbol_manager, NULL) != 0)
+  if (assemble_pass_2 (mid_file, lst_file, obj_file, opcode_manager, symbol_manager) != 0)
     {
       unlink (mid_file);
       unlink (lst_file);
@@ -101,7 +164,7 @@ static int fetch_statement (FILE *fp, const struct opcode_manager *opcode_manage
         input[i] = input[i + offset];
       input[i] = 0;
     }
-  strcpy (input_token, input);
+  strncpy (input_token, input, ASSEMBLE_STATEMENT_MAX_LEN);
   
   statement->input = input;
   statement->token_cnt = 0;
@@ -144,6 +207,11 @@ static int fetch_statement (FILE *fp, const struct opcode_manager *opcode_manage
 
       const struct opcode *opcode = opcode_find (opcode_manager, opcode_token);
 
+      /* 첫 번째 token을 symbol로 인식할 것이냐 opcode로 인식할 것이냐의 문제가 있다.
+       * 나는 이를 해결하기 위해서 opcode table를 검색하여 valid할 경우, opcode로 아닐 경우
+       * symbol로 인식하는 방법을 사용하였다.
+       */
+
       // Symbol이 없는 경우,
       if (opcode)
         {
@@ -178,7 +246,7 @@ static int fetch_statement (FILE *fp, const struct opcode_manager *opcode_manage
         }
 
       // token list에 있는 symbol과 opcode의 token을 지움.
-      for (int i = operand_token_offset; i < statement->token_cnt; ++i)
+      for (size_t i = operand_token_offset; i < statement->token_cnt; ++i)
         statement->token_list[i - operand_token_offset] = statement->token_list[i];
       statement->token_cnt -= operand_token_offset;
     }
@@ -186,12 +254,9 @@ static int fetch_statement (FILE *fp, const struct opcode_manager *opcode_manage
   return 0;
 }
 
-#define TEXT_RECORD_MAX_BYTES_PER_ROW 30
-
 static int assemble_pass_1 (const char *asm_file, const char *mid_file, 
                             const struct opcode_manager *opcode_manager,
-                            struct symbol_manager *symbol_manager,
-                            struct assemble_result *result)
+                            struct symbol_manager *symbol_manager)
 {
   FILE *asm_fp = fopen (asm_file, "rt");
   FILE *mid_fp = fopen (mid_file, "wt");
@@ -349,7 +414,8 @@ static int assemble_pass_1 (const char *asm_file, const char *mid_file,
                 }
             }
           
-          fprintf (mid_fp, "%04X\t%X\t%s\n", old_LOCCTR, LOCCTR-old_LOCCTR, statement.input);
+          fprintf (mid_fp, "%04X\t%X\t%s\n", (unsigned int) old_LOCCTR,
+                   (unsigned int )(LOCCTR-old_LOCCTR), statement.input);
         }
 
       if (feof (asm_fp) != 0)
@@ -381,58 +447,6 @@ END:
   return ret;
 }
 
-union instruction_format_1
-  {
-    struct
-      {
-        uint8_t opcode : 8;
-      } bit_field;
-    uint8_t val;
-  };
-
-union instruction_format_2
-  {
-    struct
-      {
-        uint16_t r2     : 4;
-        uint16_t r1     : 4;
-        uint16_t opcode : 8;
-      } bit_field;
-    uint16_t val;
-  };
-
-union instruction_format_3
-  {
-    struct
-      {
-        uint32_t disp   : 12;
-        uint32_t e      : 1;  // must be 0
-        uint32_t p      : 1;
-        uint32_t b      : 1;
-        uint32_t x      : 1;
-        uint32_t i      : 1;
-        uint32_t n      : 1;
-        uint32_t opcode : 6;
-      } bit_field;
-    uint32_t val;
-  };
-
-union instruction_format_4
-  {
-    struct
-      {
-        uint32_t address: 20;
-        uint32_t e      : 1;  // must be 1
-        uint32_t p      : 1;
-        uint32_t b      : 1;
-        uint32_t x      : 1;
-        uint32_t i      : 1;
-        uint32_t n      : 1;
-        uint32_t opcode : 6;
-      } bit_field;
-    uint32_t val;
-  };
-
 static int convert_register_mnemonic_to_no (const char *register_mnemonic)
 {
 #define COMPARE_WITH(STR) \
@@ -454,8 +468,7 @@ static int convert_register_mnemonic_to_no (const char *register_mnemonic)
 
 static int assemble_pass_2 (const char *mid_file, const char *lst_file, const char *obj_file, 
                             const struct opcode_manager *opcode_manager,
-                            const struct symbol_manager *symbol_manager,
-                            struct assemble_result *result)
+                            const struct symbol_manager *symbol_manager)
 {
   FILE *mid_fp = fopen (mid_file, "rt");
   FILE *lst_fp = fopen (lst_file, "wt");
@@ -476,17 +489,18 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
   uint32_t object_code;
   bool exist_base = false;
   uint32_t base;
-  uint32_t mod_LOCCTR_list[1111];
+  uint32_t mod_LOCCTR_list[MAX_MOD_REC_NUM];
   int mod_LOCCTR_cnt = 0;
-  char program_name[10] = {0};
-  char byte_buf[1111];
-  char obj_buf[1111], rec_head[30];
+  char program_name[MAX_PROGRAM_NAME_LEN+1] = {0,};
+  char byte_buf[MAX_BYTE_BUF_LEN+1];
+  char obj_buf[MAX_OBJ_BUF_LEN+1], rec_head[MAX_REC_HEAD_LEN+1];
+  
   obj_buf[0] = '\0';
 
 #define VERIFY_TEXT_RECORD_MAX_BYTES(bytes) \
   if (LOCCTR + bytes > row_LOCCTR + TEXT_RECORD_MAX_BYTES_PER_ROW) \
     { \
-      sprintf (rec_head, "T%06X%02X", row_LOCCTR, (uint8_t) strlen (obj_buf) / 2); \
+      snprintf (rec_head, MAX_REC_HEAD_LEN, "T%06X%02X", row_LOCCTR, (uint8_t) strlen (obj_buf) / 2); \
       fprintf (obj_fp, "%s%s\n", rec_head, obj_buf); \
       row_LOCCTR = LOCCTR; \
       obj_buf[0] = '\0'; \
@@ -504,7 +518,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
   if (!statement.is_comment && statement.opcode->op_format == OPCODE_START)
     {
       if (statement.symbol)
-        strcpy (program_name, statement.symbol);
+        strncpy (program_name, statement.symbol, MAX_PROGRAM_NAME_LEN);
 
       fprintf (lst_fp, "%d\t%04X%s\n", line_no, LOCCTR, statement.input);
       fprintf (obj_fp, "%19s\n", "");
@@ -683,7 +697,6 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
 
                   /* Addressing 모드 처리 */
 
-                  bool imm = false;
                   bool operand_is_constant = false;
 
                   // Immediate addressing
@@ -691,7 +704,6 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
                     {
                       CONTROL_INST(bit_field.n = 0);
                       CONTROL_INST(bit_field.i = 1);
-                      imm = true;
                       if ('0' <= operand[1] && operand[1] <= '9')
                         operand_is_constant = true;
                       ++operand;
@@ -735,7 +747,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
                       if (!operand_is_constant)
                         mod_LOCCTR_list[mod_LOCCTR_cnt++] = LOCCTR+1;
                     }
-                  else if (imm)
+                  else if (operand_is_constant)
                     {
                       instruction_for_3.bit_field.b = 0;
                       instruction_for_3.bit_field.p = 0;
@@ -842,7 +854,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
                       uint8_t val[2] = { ch / 16 , ch % 16 };
                       for (int j = 0; j < 2; ++j, ++idx)
                         {
-                          if (0 <= val[j] && val[j] <= 9)
+                          if (/*0 <= val[j] && */val[j] <= 9)
                             byte_buf[idx] = val[j] + '0';
                           else
                             byte_buf[idx] = val[j] - 10 + 'A';
@@ -949,17 +961,19 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
   VERIFY_TEXT_RECORD_MAX_BYTES (TEXT_RECORD_MAX_BYTES_PER_ROW);
   for (int i = 0; i < mod_LOCCTR_cnt; ++i)
     {
-      sprintf (rec_head, "M%06X05", mod_LOCCTR_list[i]);
+      snprintf (rec_head, MAX_REC_HEAD_LEN, "M%06X05", mod_LOCCTR_list[i]);
       fprintf (obj_fp, "%s\n", rec_head);
     }
-  sprintf (rec_head, "E%06X", start_LOCCTR);
+  snprintf (rec_head, MAX_REC_HEAD_LEN, "E%06X", start_LOCCTR);
   fprintf (obj_fp, "%s\n", rec_head);
-  sprintf (rec_head, "H%-6s%06X%06X", program_name, start_LOCCTR, LOCCTR - start_LOCCTR);
+  snprintf (rec_head, MAX_REC_HEAD_LEN, "H%-6s%06X%06X", program_name, start_LOCCTR, LOCCTR - start_LOCCTR);
   fseek (obj_fp, 0, SEEK_SET);
   fprintf (obj_fp, "%s\n", rec_head);
     
   ret = 0;
   goto END;
+
+#undef VERIFY_TEXT_RECORD_MAX_BYTES
 
 ERROR:
   fprintf (stderr, "[ERROR] Line no %d: an error occurs in step 2.\n", line_no);
@@ -972,5 +986,4 @@ END:
     fclose (obj_fp);
 
   return ret;
-
 }

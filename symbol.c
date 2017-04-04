@@ -1,8 +1,9 @@
-#include "symbol.h"
-#include "list.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+#include "symbol.h"
+#include "list.h"
 
 #define SYMBOL_HASH_TABLE_SIZE 40
 
@@ -58,7 +59,7 @@ void symbol_insert (struct symbol_manager *manager, const struct symbol *symbol)
 }
 
 /* symbol manager에서 이름 (mnemonic) 을 통해 symbol를 찾는 함수 */
-const struct symbol *symbol_find (struct symbol_manager *manager, const char *label)
+const struct symbol *symbol_find (const struct symbol_manager *manager, const char *label)
 {
   size_t hash = hash_string (label, SYMBOL_HASH_TABLE_SIZE);
   struct list_node *node;

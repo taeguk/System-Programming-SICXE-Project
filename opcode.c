@@ -1,8 +1,9 @@
-#include "opcode.h"
-#include "list.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+#include "opcode.h"
+#include "list.h"
 
 #define OPCODE_HASH_TABLE_SIZE 20
 
@@ -80,12 +81,11 @@ void opcode_print_list (const struct opcode_manager *manager)
 {
   for (int i = 0; i < OPCODE_HASH_TABLE_SIZE; ++i)
     {
-      struct list_node *node, *next_node;
       bool first = true;
 
       printf ("%d : ", i);
       
-      for (node = list_begin (manager->buckets[i]);
+      for (struct list_node *node = list_begin (manager->buckets[i]);
            node != list_end (manager->buckets[i]);
            node = list_next (node))
         {
