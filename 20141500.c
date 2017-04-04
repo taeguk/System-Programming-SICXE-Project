@@ -1,6 +1,7 @@
-#include "command.h"
 #include <stdio.h>
 #include <string.h>
+
+#include "command.h"
 
 #define MEMORY_SIZE (1 * 1024 * 1024) /* 1MB */
 #define OPCODE_FILE "opcode.txt"
@@ -9,17 +10,17 @@ static void insert_fake_opcodes (struct opcode_manager *manager)
 {
   static const struct opcode fake_list[] = 
     {
-        { 0, "START", OPCODE_START },
-        { 0, "END", OPCODE_END },
-        { 0, "BYTE", OPCODE_BYTE },
-        { 0, "WORD", OPCODE_WORD },
-        { 0, "RESB", OPCODE_RESB },
-        { 0, "RESW", OPCODE_RESW },
-        { 0, "BASE", OPCODE_BASE },
-        { 0, "NOBASE", OPCODE_NOBASE }
+        { 0, "START", OPCODE_START, OPCODE_FAKE },
+        { 0, "END", OPCODE_END, OPCODE_FAKE },
+        { 0, "BYTE", OPCODE_BYTE, OPCODE_FAKE },
+        { 0, "WORD", OPCODE_WORD, OPCODE_FAKE },
+        { 0, "RESB", OPCODE_RESB, OPCODE_FAKE },
+        { 0, "RESW", OPCODE_RESW, OPCODE_FAKE },
+        { 0, "BASE", OPCODE_BASE, OPCODE_FAKE },
+        { 0, "NOBASE", OPCODE_NOBASE, OPCODE_FAKE }
     };
 
-  for (int i = 0; i < sizeof(fake_list) / sizeof(*fake_list); ++i)
+  for (size_t i = 0; i < sizeof(fake_list) / sizeof(*fake_list); ++i)
     {
       opcode_insert (manager, &fake_list[i]);
     }

@@ -1,10 +1,11 @@
-#include "history.h"
-#include "command_def.h"
-#include "list.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "history.h"
+#include "command_def.h"
+#include "list.h"
 
 struct history_manager
   {

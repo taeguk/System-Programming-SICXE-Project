@@ -1,6 +1,7 @@
-#include "list.h"
 #include <assert.h>
 #include <stdlib.h>
+
+#include "list.h"
 
 struct list
   {

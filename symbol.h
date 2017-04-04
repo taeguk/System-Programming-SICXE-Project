@@ -23,7 +23,7 @@ void symbol_manager_destroy (struct symbol_manager *manager);
 void symbol_insert (struct symbol_manager *manager, const struct symbol *symbol);
 
 /* symbol manager에서 이름 (mnemonic) 을 통해 symbol를 찾는 함수 */
-const struct symbol *symbol_find (struct symbol_manager *manager, const char *label);  // Be cautious to dangling pointer problem.
+const struct symbol *symbol_find (const struct symbol_manager *manager, const char *label);  // Be cautious to dangling pointer problem.
 
 /* symbol manager 내의 symbol들을 모두 출력하는 함수 */
 void symbol_print_list (struct symbol_manager *manager);
