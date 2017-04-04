@@ -24,16 +24,18 @@
 #define MAX_OBJ_BUF_LEN 1000
 #define MAX_BYTE_BUF_LEN 1000
 
+/* ASM 파일에서 한 줄 (statement)의 정보를 저장하는 구조체 */
 struct statement
   {
     bool is_comment;
     const char *symbol;
     const struct opcode *opcode;
     bool extend;
+    char *input; // statement 문자열을 그대로 간직하고 있는 pointer.
+
     /* tokens for operand */
     size_t token_cnt;
     char *token_list[ASSEMBLE_STATEMENT_TOKEN_MAX_NUM+1];
-    char *input;
   };
 
 union instruction_format_1
@@ -96,7 +98,6 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
                             const struct opcode_manager *opcode_manager,
                             const struct symbol_manager *symbol_manager);
 
-/* 성공 시 0, 그렇지 않을 경우 그외의 값을 반환. */
 int assemble (const char *filename, const struct opcode_manager *opcode_manager,
               struct symbol_manager *symbol_manager)
 {
@@ -310,6 +311,13 @@ static int assemble_pass_1 (const char *asm_file, const char *mid_file,
           // symbol을 symbol table에 넣음.
           if (statement.symbol)
             {
+              // 이미 존재하는 symbol일 경우,,, error.
+              if (symbol_find (symbol_manager, statement.symbol))
+                {
+                  ret = -1;
+                  goto ERROR;
+                }
+
               struct symbol symbol;
               strncpy (symbol.label, statement.symbol, SYMBOL_NAME_MAX_LEN);
               symbol.LOCCTR = LOCCTR;
@@ -542,6 +550,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
         }
       else
         {
+          /***************** Format 1의 Instruction의 경우 ****************/
           if (statement.opcode->op_format == OPCODE_FORMAT_1)
             {
               if (statement.token_cnt != 0)
@@ -551,6 +560,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
                 }
               object_code = statement.opcode->val;
             }
+          /***************** Format 2의 Instruction의 경우 ****************/
           else if (statement.opcode->op_format == OPCODE_FORMAT_2)
             {
               union instruction_format_2 instruction;
@@ -640,6 +650,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
                 }
               object_code = instruction.val;
             }
+          /***************** Format 3의 Instruction의 경우 ****************/
           else if (statement.opcode->op_format == OPCODE_FORMAT_3_4)
             {
               union instruction_format_3 instruction_for_3; instruction_for_3.val = 0;
@@ -797,9 +808,9 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
                               ret = -1;
                               goto ERROR;
                             }
-                        }
-                    }
-                }
+                        } /* PC Relative 가 불가능한 경우의 scope */
+                    } /* Displacement를 계산해야하는 경우의 scope */
+                } /* OPCODE_FORMAT_3_4_GENERAL인 경우의 scope */
               
               if (statement.extend)
                 object_code = instruction_for_4.val;
@@ -807,7 +818,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
                 object_code = instruction_for_3.val;
 
 #undef CONTROL_INST
-            }
+            } /* OPCODE_FORMAT_3_4인 경우의 scope */
           else if (statement.opcode->op_format == OPCODE_BASE)
             {
               if (statement.token_cnt != 1)
@@ -874,7 +885,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
                   ret = -1;
                   goto ERROR;
                 }
-            }
+            } /* OPCODE_BYTE인 경우의 scope */
           else if (statement.opcode->op_format == OPCODE_WORD)
             {
               if (statement.token_cnt != 1)
@@ -939,7 +950,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
 
           if (format)
             fprintf (lst_fp, format, line_no, LOCCTR, statement.input, object_code);
-        }
+        } /* 주석이 아닌 경우의 scope */
 
       if (feof (mid_fp) != 0)
         break;
@@ -954,7 +965,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
         }
 
       line_no += 5;
-    }
+    } /* Outer while문의 scope */
   
   LOCCTR += statement_size;
 
