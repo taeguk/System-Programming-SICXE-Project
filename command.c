@@ -9,6 +9,7 @@
 
 #include "command.h"
 #include "assemble.h"
+#include "loader.h"
 
 #define COMMAND_TOKEN_MAX_NUM 8
 
@@ -23,7 +24,9 @@ enum command_type
     COMMAND_HELP, COMMAND_DIR, COMMAND_QUIT, COMMAND_HISTORY,
     COMMAND_DUMP, COMMAND_EDIT, COMMAND_FILL, COMMAND_RESET,
     COMMAND_OPCODE, COMMAND_OPCODELIST,
-    COMMAND_ASSEMBLE, COMMAND_TYPE, COMMAND_SYMBOL
+    COMMAND_ASSEMBLE, COMMAND_TYPE, COMMAND_SYMBOL,
+    COMMAND_PROGADDR, COMMAND_LOADER
+    /* COMMAND_RUN, COMMAND_DEBUG */
   };
 
 /* 사용자가 입력한 명령을 의미하는 구조체 */
@@ -50,6 +53,8 @@ static int command_h_opcodelist (struct command_state *state, struct command *co
 static int command_h_assemble (struct command_state *state, struct command *command);
 static int command_h_type (struct command_state *state, struct command *command);
 static int command_h_symbol (struct command_state *state, struct command *command);
+static int command_h_progaddr (struct command_state *state, struct command *command);
+static int command_h_loader (struct command_state *state, struct command *command);
 
 bool command_loop (struct command_state *state)
 {
@@ -170,6 +175,12 @@ static int command_fetch (struct command *command)
   else if (COMPARE_WITH ("symbol"))
     command->type = COMMAND_SYMBOL
       ;
+  else if (COMPARE_WITH ("progaddr"))
+    command->type = COMMAND_PROGADDR
+      ;
+  else if (COMPARE_WITH ("loader"))
+    command->type = COMMAND_LOADER
+      ;
   else
     return COMMAND_STATUS_INVALID_INPUT;
 
@@ -227,6 +238,12 @@ static int command_process (struct command_state *state, struct command *command
     case COMMAND_SYMBOL:
       return command_h_symbol (state, command);
         ;
+    case COMMAND_PROGADDR:
+      return command_h_progaddr (state, command);
+        ;
+    case COMMAND_LOADER:
+      return command_h_loader (state, command);
+        ;
     default:
       return COMMAND_STATUS_INVALID_INPUT;
     }
@@ -251,6 +268,10 @@ static int command_h_help (__attribute__((unused)) struct command_state *state, 
           "assemble filename\n"
           "type filename\n"
           "symbol\n"
+          "progaddr address\n"
+          "loader object_filename_1 [object file names...]\n"
+          "run\n"
+          "bp\n"
   );
   return COMMAND_STATUS_SUCCESS;
 }
@@ -495,6 +516,54 @@ static int command_h_symbol (struct command_state *state, struct command *comman
     }
   
   symbol_print_list (state->symbol_manager);
+
+  return COMMAND_STATUS_SUCCESS;
+}
+
+static int command_h_progaddr (struct command_state *state, struct command *command)
+{
+  if (command->token_cnt != 2)
+    return COMMAND_STATUS_INVALID_INPUT;
+
+  uint32_t progaddr;
+  progaddr = strtol (command->token_list[1], NULL, 16);
+
+  if (progaddr > 0xFFFF)
+    {
+      fprintf (stderr, "[ERROR] Invalid progaddr : %s\n", command->token_list[1]);
+      return COMMAND_STATUS_INVALID_INPUT;
+    }
+
+  state->progaddr = progaddr;
+
+  return COMMAND_STATUS_SUCCESS;
+}
+
+static int command_h_loader (struct command_state *state, struct command *command)
+{
+  if (command->token_cnt == 1)
+    {
+      fprintf (stderr, "[ERROR] No object file names.\n");
+      return COMMAND_STATUS_INVALID_INPUT;
+    }
+  else if (command->token_cnt > 4)
+    {
+      fprintf (stderr, "[ERROR] Maximum of the number of object files is 4.\n");
+      return COMMAND_STATUS_INVALID_INPUT;
+    }
+
+  static char *object_filename_list[3];
+
+  for (int i = 1; i < command->token_cnt; ++i)
+    object_filename_list[i-1] = command->token_list[i];
+
+  int error_code = loader(state->memory_manager, state->progaddr, &state->execaddr,
+                          object_filename_list, command->token_cnt-1);
+  if (error_code != 0)
+    {
+      fprintf (stderr, "[ERROR] Loader Fail.\n");
+      return COMMAND_STATUS_FAIL_TO_PROCESS;
+    }
 
   return COMMAND_STATUS_SUCCESS;
 }
