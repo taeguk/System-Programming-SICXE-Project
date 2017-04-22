@@ -116,6 +116,7 @@ int main()
   insert_fake_opcodes (state.opcode_manager);
   state.symbol_manager = NULL;
   state.saved_dump_start = 0;
+  state.progaddr = 0;
 
   /* Command Loop로 진입하여, 사용자의 입력을 처리한다. */
   command_loop(&state);
