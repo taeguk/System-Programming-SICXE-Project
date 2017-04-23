@@ -16,6 +16,8 @@ bool memory_edit (struct memory_manager *manager, uint32_t offset, uint8_t val);
 bool memory_fill (struct memory_manager *manager, uint32_t start, uint32_t end, uint8_t val);  // [start, end]
 void memory_reset (struct memory_manager *manager);
 
+bool memory_get (struct memory_manager *manager, uint32_t offset, uint8_t *val);
+
 /* memory를 dump하여 출력해주는 함수 */
 bool memory_dump (struct memory_manager *manager, uint32_t start, uint32_t end, bool enable_max_end);  // [start, end].
 
