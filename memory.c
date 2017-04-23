@@ -55,6 +55,15 @@ void memory_reset (struct memory_manager *manager)
   memset (manager->memory, 0, manager->memory_size);
 }
 
+bool memory_get (struct memory_manager *manager, uint32_t offset, uint8_t *val)
+{
+  if (offset >= manager->memory_size)
+    return false;
+
+  *val = ((uint8_t*) manager->memory)[offset];
+  return true;
+}
+
 /* [start, end] offset 범위의 memory를 dump해서 출력해주는 함수
  * 만약 enable_max_end가 true라면, end가 memory 범위를 초과하는 offset일 경우
  * end를 가능한 최대 memory offset으로 세팅해준다.
