@@ -10,6 +10,7 @@
 #include "command.h"
 #include "assemble.h"
 #include "loader.h"
+#include "run.h"
 
 #define COMMAND_TOKEN_MAX_NUM 8
 
@@ -25,8 +26,8 @@ enum command_type
     COMMAND_DUMP, COMMAND_EDIT, COMMAND_FILL, COMMAND_RESET,
     COMMAND_OPCODE, COMMAND_OPCODELIST,
     COMMAND_ASSEMBLE, COMMAND_TYPE, COMMAND_SYMBOL,
-    COMMAND_PROGADDR, COMMAND_LOADER
-    /* COMMAND_RUN, COMMAND_DEBUG */
+    COMMAND_PROGADDR, COMMAND_LOADER,
+    COMMAND_RUN, COMMAND_BP
   };
 
 /* 사용자가 입력한 명령을 의미하는 구조체 */
@@ -55,6 +56,8 @@ static int command_h_type (struct command_state *state, struct command *command)
 static int command_h_symbol (struct command_state *state, struct command *command);
 static int command_h_progaddr (struct command_state *state, struct command *command);
 static int command_h_loader (struct command_state *state, struct command *command);
+static int command_h_run(struct command_state *state, struct command *command);
+static int command_h_bp (struct command_state *state, struct command *command);
 
 bool command_loop (struct command_state *state)
 {
@@ -181,6 +184,12 @@ static int command_fetch (struct command *command)
   else if (COMPARE_WITH ("loader"))
     command->type = COMMAND_LOADER
       ;
+  else if (COMPARE_WITH ("run"))
+    command->type = COMMAND_RUN
+      ;
+  else if (COMPARE_WITH ("bp"))
+    command->type = COMMAND_BP
+      ;
   else
     return COMMAND_STATUS_INVALID_INPUT;
 
@@ -244,6 +253,12 @@ static int command_process (struct command_state *state, struct command *command
     case COMMAND_LOADER:
       return command_h_loader (state, command);
         ;
+    case COMMAND_RUN:
+      return command_h_run (state, command);
+        ;
+    case COMMAND_BP:
+      return command_h_bp (state, command);
+        ;
     default:
       return COMMAND_STATUS_INVALID_INPUT;
     }
@@ -271,7 +286,8 @@ static int command_h_help (__attribute__((unused)) struct command_state *state, 
           "progaddr address\n"
           "loader object_filename_1 [object file names...]\n"
           "run\n"
-          "bp\n"
+          "bp [address]\n"
+          "bp clear\n"
   );
   return COMMAND_STATUS_SUCCESS;
 }
@@ -563,6 +579,55 @@ static int command_h_loader (struct command_state *state, struct command *comman
     {
       fprintf (stderr, "[ERROR] Loader Fail.\n");
       return COMMAND_STATUS_FAIL_TO_PROCESS;
+    }
+
+  return COMMAND_STATUS_SUCCESS;
+}
+
+static int command_h_run(struct command_state *state, struct command *command)
+{
+  struct run_register_set reg_set = { .PC = state->progaddr };
+  int error_code = run (state->memory_manager, state->debug_manager, &reg_set);
+  if (error_code != 0)
+    {
+      fprintf (stderr, "[ERROR] Run Fail.\n");
+      return COMMAND_STATUS_FAIL_TO_PROCESS;
+    }
+
+  printf (
+      "A : %08X  X : %08X \n"
+      "L : %08X  PC: %08X \n"
+      "B : %08X  S : %08X \n"
+      "T : %08X           \n",
+      reg_set.A, reg_set.X,
+      reg_set.L, reg_set.PC,
+      reg_set.B, reg_set.S,
+      reg_set.T
+  );
+
+  return COMMAND_STATUS_SUCCESS;
+}
+
+static int command_h_bp (struct command_state *state, struct command *command)
+{
+  if (command->token_cnt > 2)
+    return COMMAND_STATUS_INVALID_INPUT;
+
+  if (command->token_cnt == 1)
+    {
+      debug_bp_print_list (state->debug_manager);
+    }
+  else
+    {
+      if (strcmp (command->token_list[1], "clear") == 0)
+        {
+          debug_bp_clear (state->debug_manager);
+        }
+      else
+        {
+          uint32_t address = strtol (command->token_list[1], NULL, 16);
+          debug_bp_add (state->debug_manager, address);
+        }
     }
 
   return COMMAND_STATUS_SUCCESS;

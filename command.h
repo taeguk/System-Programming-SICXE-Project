@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "opcode.h"
 #include "symbol.h"
+#include "debug.h"
 #include "command_def.h"
 
 /* Command Loop의 state를 의미하는 구조체 
@@ -20,9 +21,10 @@ struct command_state
     struct memory_manager *memory_manager;
     struct opcode_manager *opcode_manager;
     struct symbol_manager *symbol_manager;
+    struct debug_manager *debug_manager;
     uint32_t saved_dump_start; /* parameter가 없는 dump 명령어에서 위치를 저장하기 위해 쓰인다. */
     uint32_t progaddr;  /* loader 또는 run 명령어를 수행할 때 시작하는 주소. */
-    uint32_t execaddr;
+    uint32_t execaddr;  /* 일단은 무시 */
   };
 
 /* 사용자의 입력을 받아서 처리하는 Command Loop로 진입하는 함수. */

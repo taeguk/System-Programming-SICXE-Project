@@ -327,10 +327,16 @@ static int loader_pass_2_to_one_obj (uint32_t *CSADDR, const struct symbol_manag
           CHECK_AND_UPDATE_STATE (obj_buf[0]);
 
           uint32_t offset;
-          uint32_t length, ref_no;
-          char op;
+          uint32_t length, ref_no = 0xFFFFFFFF;
+          char op = 0;
 
           sscanf (obj_buf, "M%06X%02X%c%02X", &offset, &length, &op, &ref_no);
+
+          if (ref_no == 0xFFFFFFFF)
+            {
+              op = '+';
+              ref_no = 0x01;
+            }
 
           if (!ref_no_validation[ref_no])
             {
