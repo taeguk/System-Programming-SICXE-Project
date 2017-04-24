@@ -445,7 +445,7 @@ static int assemble_pass_1 (const char *asm_file, const char *mid_file,
   goto END;
 
 ERROR:
-  fprintf (stderr, "[ERROR] Line no %d: an error occurs in step 1.\n", line_no);
+  fprintf (stderr, "[ERROR] Line no %d: an error occurs in pass 1.\n", line_no);
 END:
   if (asm_fp)
     fclose (asm_fp);
@@ -463,7 +463,7 @@ static int convert_register_mnemonic_to_no (const char *register_mnemonic)
   if (COMPARE_WITH("A"))        return 0;
   else if (COMPARE_WITH("X"))   return 1;
   else if (COMPARE_WITH("L"))   return 2;
-  else if (COMPARE_WITH("PL"))  return 8;
+  else if (COMPARE_WITH("PC"))  return 8;
   else if (COMPARE_WITH("SW"))  return 9;
   else if (COMPARE_WITH("B"))   return 3;
   else if (COMPARE_WITH("S"))   return 4;
@@ -987,7 +987,7 @@ static int assemble_pass_2 (const char *mid_file, const char *lst_file, const ch
 #undef VERIFY_TEXT_RECORD_MAX_BYTES
 
 ERROR:
-  fprintf (stderr, "[ERROR] Line no %d: an error occurs in step 2.\n", line_no);
+  fprintf (stderr, "[ERROR] Line no %d: an error occurs in pass 2.\n", line_no);
 END:
   if (mid_fp)
     fclose (mid_fp);

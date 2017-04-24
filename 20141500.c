@@ -115,6 +115,7 @@ int main()
     }
   insert_fake_opcodes (state.opcode_manager);
   state.symbol_manager = NULL;
+  state.debug_manager = debug_manager_construct ();
   state.saved_dump_start = 0;
   state.progaddr = 0;
 
