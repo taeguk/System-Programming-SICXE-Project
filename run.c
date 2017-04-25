@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <string.h>
 #include <stdio.h>
 
 #include "run.h"
@@ -150,7 +151,9 @@ int run (struct memory_manager *memory_manager, const struct debug_manager *debu
     }
   else
     {
+      uint32_t PC = reg_set->PC;
       memset (reg_set, 0, sizeof (*reg_set));
+      reg_set->PC = PC;
       reg_set->L = 0x00FFFFFF;
     }
 
@@ -313,7 +316,7 @@ static bool load_mem (struct memory_manager *memory_manager, const struct run_re
       //fprintf (stderr, "[DEBUG - load_mem - simple]\n");
       uint8_t mem_val;
       *value = 0;
-      for (int i = 0; i < bytes; ++i)
+      for (size_t i = 0; i < bytes; ++i)
         {
           memory_get (memory_manager, target_address + i, &mem_val);
           *value = (*value << 8) + mem_val;
@@ -334,7 +337,7 @@ static bool load_mem (struct memory_manager *memory_manager, const struct run_re
       //fprintf (stderr, "[DEBUG - load_mem - indirect] final address = %08X\n", address);
 
       *value = 0;
-      for (int i = 0; i < bytes; ++i)
+      for (size_t i = 0; i < bytes; ++i)
         {
           memory_get (memory_manager, address + i, &mem_val);
           *value = (*value << 8) + mem_val;
@@ -611,13 +614,13 @@ static void _h_RD (struct memory_manager *memory_manager, struct inst_param inst
   /* I/O instructions are not supported.
    * This behavior is just for test */
   static char device_input_mock[] = "HELLO WORLD\0I'M TAEGUK\0";
-  static int device_input_idx = 0;
+  static size_t device_input_idx = 0;
 
   reg_set->A = (reg_set->A & 0xFFFFFF00) + (uint8_t) device_input_mock[device_input_idx++];
 
   fprintf (stdout, "--- [Input Device] input = '%c'\n", (char)(reg_set->A & 0xFF));
 
-  if (device_input_idx >= sizeof(device_input_mock)/sizeof(char))
+  if (device_input_idx >= sizeof(device_input_mock) / sizeof(char))
     device_input_idx = 0;
 }
 static void _h_WD (struct memory_manager *memory_manager, struct inst_param inst_param, struct run_register_set *reg_set)

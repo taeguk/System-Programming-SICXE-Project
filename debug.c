@@ -51,7 +51,7 @@ void debug_bp_clear (struct debug_manager *manager)
 
 bool debug_bp_check (const struct debug_manager *manager, uint32_t start, uint32_t end, uint32_t *bp)  // [start, end)
 {
-  for (int i = 0; i < manager->cnt; ++i)
+  for (size_t i = 0; i < manager->cnt; ++i)
     {
       if (start <= manager->bp_list[i] && manager->bp_list[i] < end)
         {
@@ -73,7 +73,7 @@ void debug_bp_print_list (const struct debug_manager *manager)
     {
       printf ("breakpoint\n"
               "----------\n");
-      for (int i = 0; i < manager->cnt; ++i)
+      for (size_t i = 0; i < manager->cnt; ++i)
         printf ("%04X\n", manager->bp_list[i]);
     }
 }

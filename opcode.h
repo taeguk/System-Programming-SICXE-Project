@@ -60,7 +60,6 @@ void opcode_insert (struct opcode_manager *manager, const struct opcode *opcode)
 const struct opcode *opcode_find (const struct opcode_manager *manager, const char *name);  // Be cautious to dangling pointer problem.
 
 /* opcode manager 내의 opcode들을 모두 출력하는 함수 */
-///************** 수정해야함!!!!! 버그 있음.!! ********///
 void opcode_print_list (const struct opcode_manager *manager);
 
 #endif
