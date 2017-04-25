@@ -78,7 +78,7 @@ static bool load_reg (struct run_register_set *reg_set, int reg_no, uint32_t *re
 static bool store_reg (struct run_register_set *reg_set, int reg_no, uint32_t reg_val);
 
 int run (struct memory_manager *memory_manager, const struct debug_manager *debug_manager,
-         struct run_register_set *reg_set)
+         struct run_register_set *reg_set, bool *is_running)
 {
   // 1. PC로 부터 opcode를 읽는다.
   // 2. opcode마다 추가적으로 0~3바이트를 더 읽고,
@@ -141,7 +141,21 @@ int run (struct memory_manager *memory_manager, const struct debug_manager *debu
           [0xB8] = _h_TIXR
       };
 
-  reg_set->L = 0x00FFFFFF;
+  int ret;
+  bool is_continue = *is_running;
+
+  if (*is_running)
+    {
+      printf ("[Info] Continuous Running.\n");
+    }
+  else
+    {
+      memset (reg_set, 0, sizeof (*reg_set));
+      reg_set->L = 0x00FFFFFF;
+    }
+
+  *is_running = true;
+
   while (reg_set->PC != 0x00FFFFFF)
     {
       uint8_t opcode;
@@ -182,10 +196,11 @@ int run (struct memory_manager *memory_manager, const struct debug_manager *debu
           return -1;
         }
 
-      if (debug_bp_check (debug_manager, reg_set->PC, reg_set->PC + inst_size))
+      uint32_t bp;
+      if (!is_continue && debug_bp_check (debug_manager, reg_set->PC, reg_set->PC + inst_size, &bp))
         {
           // bp에 걸림.
-          printf ("BP!\n");
+          printf ("Stop at checkpoint[%04X]\n", bp);
           return 0;
         }
 
@@ -198,11 +213,14 @@ int run (struct memory_manager *memory_manager, const struct debug_manager *debu
       if (!inst_handler)
         {
           fprintf (stderr, "[ERROR] Not supported opcode : %02X\n", opcode);
-          return -1;
+          ret = -1;
+          goto ERROR;
         }
 
       reg_set->PC += inst_size;
       inst_handler (memory_manager, inst_param, reg_set);
+
+      is_continue = false;
 
       /*
       fprintf (stderr,
@@ -220,7 +238,17 @@ int run (struct memory_manager *memory_manager, const struct debug_manager *debu
       //getchar();
     }
 
-  return 0;
+  *is_running = false;
+
+  ret = 0;
+  goto END;
+
+ERROR:
+  *is_running = false;
+END:
+  printf ("[Info] Program Terminated.\n");
+
+  return ret;
 }
 
 // TODO: range check.

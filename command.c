@@ -573,7 +573,8 @@ static int command_h_loader (struct command_state *state, struct command *comman
   for (int i = 1; i < command->token_cnt; ++i)
     object_filename_list[i-1] = command->token_list[i];
 
-  int error_code = loader(state->memory_manager, state->progaddr, &state->execaddr,
+  // TODO: memory manager의 예외 안정성 고려하기.
+  int error_code = loader(state->memory_manager, state->progaddr,
                           object_filename_list, command->token_cnt-1);
   if (error_code != 0)
     {
@@ -586,8 +587,9 @@ static int command_h_loader (struct command_state *state, struct command *comman
 
 static int command_h_run(struct command_state *state, struct command *command)
 {
-  struct run_register_set reg_set = { .PC = state->progaddr };
-  int error_code = run (state->memory_manager, state->debug_manager, &reg_set);
+  if (!state->is_running)
+    state->reg_set.PC = state->progaddr;
+  int error_code = run (state->memory_manager, state->debug_manager, &state->reg_set, &state->is_running);
   if (error_code != 0)
     {
       fprintf (stderr, "[ERROR] Run Fail.\n");
@@ -599,10 +601,10 @@ static int command_h_run(struct command_state *state, struct command *command)
       "L : %08X  PC: %08X \n"
       "B : %08X  S : %08X \n"
       "T : %08X           \n",
-      reg_set.A, reg_set.X,
-      reg_set.L, reg_set.PC,
-      reg_set.B, reg_set.S,
-      reg_set.T
+      state->reg_set.A, state->reg_set.X,
+      state->reg_set.L, state->reg_set.PC,
+      state->reg_set.B, state->reg_set.S,
+      state->reg_set.T
   );
 
   return COMMAND_STATUS_SUCCESS;

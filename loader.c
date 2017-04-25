@@ -43,7 +43,7 @@ static int loader_pass_2 (uint32_t progaddr, const struct symbol_manager *ESTAB,
 static void print_load_map (struct list *load_map);
 
 // TODO: 실패했을 때, memory 원상복구 관련해서 고려하기.
-int loader (struct memory_manager *memory_manager, uint32_t progaddr, uint32_t *EXECADDR,
+int loader (struct memory_manager *memory_manager, uint32_t progaddr,
             const char *obj_file_list[], int count)
 {
   int ret;
