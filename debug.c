@@ -29,7 +29,7 @@ void debug_manager_destroy (struct debug_manager *manager)
 
 bool debug_bp_add (struct debug_manager *manager, uint32_t address)
 {
-  if (debug_bp_check (manager, address, address + 1))
+  if (debug_bp_check (manager, address, address + 1, NULL))
       return false;
 
   if (manager->cnt >= manager->max_size)
@@ -49,12 +49,16 @@ void debug_bp_clear (struct debug_manager *manager)
   manager->bp_list = malloc (sizeof (*manager->bp_list) * manager->max_size);
 }
 
-bool debug_bp_check (const struct debug_manager *manager, uint32_t start, uint32_t end)  // [start, end)
+bool debug_bp_check (const struct debug_manager *manager, uint32_t start, uint32_t end, uint32_t *bp)  // [start, end)
 {
   for (int i = 0; i < manager->cnt; ++i)
     {
       if (start <= manager->bp_list[i] && manager->bp_list[i] < end)
-        return true;
+        {
+          if (bp)
+            *bp = manager->bp_list[i];
+          return true;
+        }
     }
   return false;
 }

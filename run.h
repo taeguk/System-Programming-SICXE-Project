@@ -13,6 +13,6 @@ struct run_register_set
 
 /* 성공 시 0, 그렇지 않을 경우 그외의 값을 반환. */
 int run (struct memory_manager *memory_manager, const struct debug_manager *debug_manager, 
-         struct run_register_set *reg_set);
+         struct run_register_set *reg_set, bool *is_running);
 
 #endif

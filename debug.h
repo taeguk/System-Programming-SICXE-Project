@@ -14,7 +14,7 @@ void debug_manager_destroy (struct debug_manager *manager);
 /* break points를 조작하는 함수들 */
 bool debug_bp_add (struct debug_manager *manager, uint32_t address);
 void debug_bp_clear (struct debug_manager *manager);
-bool debug_bp_check (const struct debug_manager *manager, uint32_t start, uint32_t end);  // [start, end)
+bool debug_bp_check (const struct debug_manager *manager, uint32_t start, uint32_t end, uint32_t *bp);  // [start, end)
 void debug_bp_print_list (const struct debug_manager *manager);
 
 #endif
