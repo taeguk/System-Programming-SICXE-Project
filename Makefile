@@ -4,7 +4,7 @@ TARGET=20141500.out
 all: $(TARGET)
 
 $(TARGET): $(SOURCES)
-	gcc -std=gnu99 -W -Wall $(SOURCES) -o $(TARGET)
+	gcc -std=gnu99 $(SOURCES) -o $(TARGET) -W -Wall -Wno-unused-parameter
 
 clean:
 	rm -f $(TARGET)

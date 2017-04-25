@@ -570,12 +570,12 @@ static int command_h_loader (struct command_state *state, struct command *comman
 
   static char *object_filename_list[3];
 
-  for (int i = 1; i < command->token_cnt; ++i)
+  for (size_t i = 1; i < command->token_cnt; ++i)
     object_filename_list[i-1] = command->token_list[i];
 
   // TODO: memory manager의 예외 안정성 고려하기.
   int error_code = loader(state->memory_manager, state->progaddr,
-                          object_filename_list, command->token_cnt-1);
+                          (const char **)object_filename_list, command->token_cnt-1);
   if (error_code != 0)
     {
       fprintf (stderr, "[ERROR] Loader Fail.\n");

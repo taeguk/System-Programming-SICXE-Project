@@ -172,7 +172,7 @@ static int loader_pass_1_to_one_obj (uint32_t *CSADDR, struct symbol_manager *ES
 
           for (int i = 0; i < rec_len / 12; ++i)
             {
-              uint32_t dummy, offset;
+              uint32_t offset;
               struct symbol symbol;
               struct load_map_node *node = malloc (sizeof(*node));
 
@@ -264,12 +264,12 @@ static int loader_pass_2_to_one_obj (uint32_t *CSADDR, const struct symbol_manag
   // fprintf (stderr, "[DEBUG] PASS 2 to %s\n", obj_file);
 
 #define CHECK_AND_UPDATE_STATE(ch) \
-  if (state > ch_to_state[ch]) \
+  if (state > ch_to_state[(uint8_t)ch]) \
   { \
     ret = -1; \
     goto ERROR; \
   } \
-  state = ch_to_state[ch];
+  state = ch_to_state[(uint8_t)ch];
 
   while (fgets (obj_buf, MAX_OBJECT_BUF_LEN, obj_fp) != NULL)
     {
@@ -315,7 +315,7 @@ static int loader_pass_2_to_one_obj (uint32_t *CSADDR, const struct symbol_manag
           uint32_t start_offset;
           uint32_t length;
           sscanf (obj_buf, "T%06X%02X", &start_offset, &length);
-          for (int i = 0; i < length; ++i)
+          for (size_t i = 0; i < length; ++i)
             {
               uint32_t val;
               sscanf (obj_buf + 9 + i * 2, "%02X", &val);
@@ -351,7 +351,7 @@ static int loader_pass_2_to_one_obj (uint32_t *CSADDR, const struct symbol_manag
 
           for (int i = 0; i < 3; ++i)
             {
-              uint32_t val;
+              uint8_t val;
               memory_get (memory_manager, base_address + offset + i, &val);
               new_value <<= 8;
               new_value += val;
